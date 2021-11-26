@@ -1,0 +1,650 @@
+-- aniwiggle
+-- by voxeledphoton
+
+poke(0x5f2d,1)
+--stat(32)--x
+--stat(33)--y
+--stat(34)--1primary2secondary4middle
+
+function _init()
+ drawcolor=7
+ menuheight=10
+ onioncol={8,12}
+ oniondith=░--▒░∧…▤
+ loading=0
+ frames={}
+ lines={}
+ frames[1]=lines
+ points={}
+ curline=1
+ curframe=1
+ mclick=0
+ notiftime=0
+ tt=0
+ tspd=11
+ restart=false
+ animplaying=0
+ debounce=true
+ onion=1
+ buttons={
+  nframe={name="nframe",s=1},
+  dframe={name="dframe",s=2},
+  playanim={name="playanim",s=3},
+  stopanim={name="stopanim",s=4},
+  leftframe={name="leftframe",s=5},
+  rightframe={name="rightframe",s=6},
+  clearframe={name="clearframe",s=7},
+  dupframe={name="dupframe",s=8},
+  onionlayer={name="onionlayer",s=9},
+  saveanim={name="saveanim",s=10},
+  loadanim={name="loadanim",s=11}
+ }
+ initbuttons()
+end
+
+function round(num)
+ return flr(num+.5)
+end
+
+function initbuttons()
+ for k,v in pairs(buttons) do
+  v.x=v.s*10-9
+  v.y=1
+ end
+end
+
+function _update()
+ tt+=1
+ if btnp(1) then
+  rightframe()
+  sfx(5)
+ end
+ if btnp(0) then
+  leftframe()
+  sfx(5)
+ end
+ if btnp(3) then
+  tspd+=1
+ end
+ if btnp(2) and tspd>2 then
+  tspd-=1
+ end
+ if btnp(4) then
+  drawcolor=(drawcolor-1)%15
+  sfx(9)
+ end
+ if btnp(5) then
+  drawcolor=(drawcolor+1)%15
+  sfx(9)
+ end
+ checkbuttons()
+ if animplaying==1 then
+  if tt%tspd==1 then
+   if restart then
+    curframe=1
+    lines=frames[curframe]
+    restart=false
+   else
+    rightframe()
+    sfx(8)
+   end
+   if curframe==#frames then
+    restart=true
+   end
+   
+   
+  end
+ else
+ 
+ end
+ if stat(33)>menuheight then
+  if tt%2==1 then
+   updatepoints()
+  end
+  
+ end
+end
+
+function updatepoints()
+ if mclick==1 then
+  if mclick~=stat(34) then    
+   lines[curline]=points
+   frames[curframe]=lines
+   curline+=1
+   points={}
+   --lines[curline]=points
+  end
+ end
+ mclick=stat(34)
+ 
+ if stat(34)==1 then
+  points[#points+1]={
+   x=stat(32),y=stat(33),
+   --c=8
+   --8+4*cos(stat(32)/2000*stat(33))
+   c=drawcolor--12+rnd(4)
+  }
+  sfx(0)
+ end
+end
+
+
+function _draw()
+ cls()
+ detectv()
+ --print(btn(5),64,64)
+ drawcurrent()
+ if onion>0 then
+  drawonions()
+ end
+ drawlines()
+ drawbuttons()
+ circfill(stat(32),stat(33),1,drawcolor)
+ print(mclick..[[
+ 
+]]..curline..[[
+
+]]..tt%10,
+ 4,12)
+ print("playing"..
+  animplaying..
+  " framecount"..
+  tblsize(frames)..
+  " frame"..curframe,2,120
+ )
+ print(round(stat(0)).."/2048",2,112)
+ --[[
+ --  debug loading animation 😐
+ pstr=""
+ table_prints(frames)
+ print(pstr,8,16,8)
+ ]]
+ if(notiftime>0)then
+  drawnotif("anim copied to clipboard!")
+  notiftime-=1
+ end
+end
+
+function tblsize(tbl)
+ local s=0
+ if tbl then
+     for k,v in pairs(tbl) do
+      s+=1
+     end
+    end
+ return s
+end
+
+function checkbuttons()
+ if stat(34)==1 and stat(33)<menuheight then
+  for k,v in pairs(buttons) do
+   if inrect(
+    stat(32),
+    stat(33),
+    v.x,v.y,
+    v.x+8,v.y+8
+   ) then
+    if debounce then
+     if v.name=="clearframe" then
+      clearframe()
+      sfx(7)
+     end
+     if v.name=="nframe" then
+      newframe()
+      sfx(2)
+     end
+     if v.name=="dframe" then
+      delframe()
+      sfx(1)
+     end
+     if v.name=="playanim" then
+      playanim()
+      sfx(3)
+     end
+     if v.name=="stopanim" then
+      stopanim()
+      sfx(4)
+     end
+     if v.name=="rightframe" then
+      rightframe()
+      sfx(5)
+     end
+     if v.name=="leftframe" then
+      leftframe()
+      sfx(5)
+     end
+     if v.name=="onionlayer" then
+      toggleonion()
+      sfx(6)
+     end
+     if v.name=="saveanim" then
+      saveanim()
+      notiftime=100
+      sfx(10)
+     end
+     if v.name=="loadanim" then
+      loadanim()
+      sfx(11)
+     end
+     if v.name=="dupframe" then
+      dupframe()
+      sfx(12)
+     end
+     debounce=false
+    end
+   end
+  end
+ end
+ if stat(34)==0 then
+  debounce=true
+ end
+end
+
+
+function drawnotif(str)
+ rectfill(0,58,127,70,9)
+ print(str,9,63,8)
+ print(str,8,62,10)
+end
+
+
+
+function rep(rstr,n)
+ sout=""
+ for i=1,n do
+  sout=sout..rstr
+ end
+ return sout
+end
+
+
+
+function jsonrec(tbl,tabs)
+ local space=rep("",tabs)
+ local addj = "{"
+ for k,v in pairs(tbl) do
+  local startj=addj..space..'"'..k..'":'
+  if type(v)=="table" then
+   addj=startj..jsonrec(v,tabs+1)..space.."},"
+  end
+  if type(v)=="number" then
+   addj=startj..v..","
+  end
+  if type(v)=="string" then
+   addj=startj..'"'..v..'",'
+  end
+ end
+ addj=sub(addj,1,#addj-1)
+ return json..addj
+end
+
+function tojson(tbl)
+ json=""
+ json=json..jsonrec(tbl,1).."\n}"
+ return json
+end
+
+function saveanim()
+ -- save anim to clipboard
+ printh(tojson(frames),"@clip")
+end
+
+
+
+function detectv()
+ if loading==1 then
+  -- show loading gui
+  print("press ctrl+v\nthen press v again",8,64)
+  --circ(64,64,5,12)
+  if btnp(5) then
+      loading=2
+      print("loading data...")
+      --getframes=json_parse(stat(4))--jsonload(stat(4))
+      frames=json_parse(stat(4))
+      curframe=1
+      lines=frames[curframe]
+      curline=#lines+1
+      --print(lines)
+      points={}--lines[curline]
+      --retbl(getframes)
+     end
+ end
+end
+
+function loadanim()
+ -- tell player to ctrl+v
+ if loading==0 then
+  loading=1
+ end
+ if loading==2 then
+  loading=0
+ end
+end
+
+function toggleonion()
+ if onion==1 then
+  onion=0
+ else
+  onion=1
+ end
+end
+
+function playanim()
+ animplaying=1
+end
+
+function stopanim()
+ animplaying=0
+end
+
+function newframe()
+ for i=tblsize(frames),curframe+1,-1 do
+  frames[i+1]=frames[i]
+ end
+ curline=1
+ points={}
+ lines={}
+ lines[1]=points
+ curframe+=1
+ frames[curframe]=lines
+end
+
+function copy(obj, seen)
+  if type(obj) ~= 'table' then return obj end
+  if seen and seen[obj] then return seen[obj] end
+  local s = seen or {}
+  local res = setmetatable({}, getmetatable(obj))
+  s[obj] = res
+  for k, v in pairs(obj) do res[copy(k, s)] = copy(v, s) end
+  return res
+end
+
+
+function dupframe()
+ for i=tblsize(frames),curframe+1,-1 do
+  frames[i+1]=frames[i]
+ end
+ frames[curframe]=copy(frames[curframe])
+ points={}
+ lines=copy(frames[curframe])
+ curline=tblsize(lines)+1
+ curframe+=1
+ frames[curframe]=lines
+end
+
+function delframe()
+ if tblsize(frames)>1 then
+  for i=curframe,tblsize(frames) do
+   frames[i]=frames[i+1]
+  end
+  if curframe>1 then
+   curframe-=1
+  end
+  lines=frames[curframe]
+  curline=tblsize(lines)+1
+ else
+  lines=frames[1]
+  curline=tblsize(lines)+1
+ end
+end
+
+function clearframe()
+ --frames[curframe].lines={}
+ curline=1
+ points={}
+ lines={}--points
+ frames[curframe]=lines
+end
+
+function leftframe()
+ if curframe>1 then
+  curframe-=1
+  --points={}
+  lines=frames[curframe]
+  curline=tblsize(lines)+1
+ end
+end
+
+function rightframe()
+ if curframe<tblsize(frames) then
+  curframe+=1
+  lines=frames[curframe]
+  curline=tblsize(lines)+1
+ end
+end
+
+function inrect(px,py,x1,y1,x2,y2)
+ if px>x1 and py>y1 and px<x2 and py<y2 then
+  return true
+ else
+  return false
+ end
+end
+
+function drawbuttons()
+ rectfill(0,0,127,menuheight,1)
+ for k,v in pairs(buttons) do
+  spr(
+   v.s,
+   v.x,
+   v.y
+  )
+ end
+end
+
+function drawcurrent()
+ for k,v in pairs(points) do
+  --circ(v.x,v.y,2,8)
+  --print(v.x)
+  if k>1 then
+   amnt=4
+   wigx=rnd()*amnt-amnt*.5
+   wigy=rnd()*amnt-amnt*.5
+   line(
+    v.x+wigx,
+    v.y+wigy,
+    points[k-1].x+wigx,
+    points[k-1].y+wigy,
+    v.c
+   )
+  end
+ end
+end
+
+
+function drawonions()
+ for m=0,1 do
+ if m==0 then n=-1 else n=1 end
+ oniframe=(curframe+n)
+ if oniframe>#frames then oniframe=1 end
+ if oniframe<1 then oniframe=#frames end
+ --print(oniframe,4,32+m*8)
+ for d,e in pairs(frames[oniframe]) do
+ for k,v in pairs(e) do
+  --print(k)
+  if k>1 then
+   amnt=1
+   --wigx=rnd()*amnt-amnt*.5
+   --wigy=rnd()*amnt-amnt*.5
+   wigx=sin(tt/100+k/8)*amnt-amnt*.5
+   wigy=cos(tt/100+k/8)*amnt-amnt*.5
+   if e[k-1].x then
+       fillp(oniondith)--0x5a5a)
+    line(
+     v.x+wigx,
+     v.y+wigy,
+     e[k-1].x+wigx,
+     e[k-1].y+wigy,
+     onioncol[m+1]
+    )
+    fillp()
+   end
+  end
+ end
+ end 
+ end
+end
+
+function drawlines()
+ --print(frames[curframe])
+ if frames[curframe]~=nil then
+     for d,e in pairs(frames[curframe]) do
+     for k,v in pairs(e) do
+      --print(k)
+      if k>1 then
+       amnt=1
+       --wigx=rnd()*amnt-amnt*.5
+       --wigy=rnd()*amnt-amnt*.5
+       local wigmount=tt/100+k/8
+       wigx=sin(wigmount)*amnt-amnt*.5
+       wigy=cos(wigmount)*amnt-amnt*.5
+       if e[k-1].x then
+        line(
+         v.x+wigx,
+         v.y+wigy,
+         e[k-1].x+wigx,
+         e[k-1].y+wigy,
+         v.c
+        )
+       end
+      end
+     end
+     end
+    end
+end
+
+
+
+
+
+
+--[[
+below functions are borrowed
+from: https://github.com/freds72/pico8/blob/master/carts/parser.p8
+♥ tysm ♥
+(i altered some a little)
+]]
+
+local function error(str)
+    printh("error"..str)
+    --assert()
+end
+
+local function match(s,tokens)
+    for i=1,#tokens do
+        if(s==sub(tokens,i,i)) return true
+    end
+    return false
+end
+local function skip_delim(str, pos, delim, err_if_missing)
+ if sub(str,pos,pos)!=delim then
+  if(err_if_missing) error('expected '..delim..' near position '.. pos)
+  return pos,false
+ end
+ return pos+1,true
+end
+local function parse_str_val(str, pos, val)
+    val=val or ''
+    if pos>#str then
+        error('end of input found while parsing string.')
+    end
+    local c=sub(str,pos,pos)
+    if(c=='"') return val,pos+1
+    return parse_str_val(str,pos+1,val..c)
+end
+local function parse_num_val(str,pos,val)
+    val=val or ''
+    if pos>#str then
+        error('end of input found while parsing string.')
+    end
+    local c=sub(str,pos,pos)
+    if(not match(c,"-0123456789.")) then
+  if match(c,'":{') then
+   return val+0,pos+1
+  end
+  return val+0,pos
+ end
+    return parse_num_val(str,pos+1,val..c)
+end
+-- public values and functions.
+local table_delims={
+    ['{']="}",
+    ['[']="]"}
+-- register json context here
+local _g={
+    ['true']=true,
+    ['false']=false}
+
+function json_parse(str, pos, end_delim)
+    pos=pos or 1
+    if(pos>#str) error('reached unexpected end of input.')
+    local first=sub(str,pos,pos)
+    if match(first,"{[") then
+        local obj,key,delim_found={},true,true
+        pos+=1
+        while true do
+            key,pos=json_parse(str, pos, table_delims[first])
+            if(key==nil) return obj,pos
+            if not delim_found then error('comma missing between table items.') end
+            if first=="{" then
+                pos=skip_delim(str,pos,':',true)  -- true -> error if missing.
+                obj[key],pos=json_parse(str,pos)
+            else
+                add(obj,key)
+            end
+            pos,delim_found=skip_delim(str, pos, ',')
+  end
+ elseif first=='"' then
+  if match(sub(str,pos+1,pos+1),"-0123456789") then
+   -- key was a string turn it into a number
+   return parse_num_val(str, pos+1)
+  end
+     -- parse a string.
+  return parse_str_val(str,pos+1)
+ elseif match(first,"-0123456789") then
+     -- parse a number.
+  return parse_num_val(str, pos)
+ elseif first==end_delim then  -- end of an object or array.
+  return nil,pos+1
+ else  -- parse true, false
+  for lit_str,lit_val in pairs(_g) do
+   local lit_end=pos+#lit_str-1
+   if sub(str,pos,lit_end)==lit_str then return lit_val,lit_end+1 end
+  end
+  local pos_info_str = 'position ' .. pos .. ': ' .. sub(str, pos, pos + 10)
+  error('invalid json syntax starting at ' .. pos_info_str)
+    end
+end
+
+function table_print(t)
+    for k,v in pairs(t) do
+        if type(v)=="table" then
+            print(k..":{")
+            table_print(v)
+            print("}")
+        else
+            print(k..":"..v)
+        end
+    end
+end
+
+
+function table_prints(t)
+ --print(t[1],64,64+rnd(16),8)
+    for k,v in pairs(t) do
+        if type(v)=="table" then
+            --print(k..":{")
+            pstr=pstr..k..":{\n"
+            table_prints(v)
+            --print("}")
+            pstr=pstr.."\n}"
+        else
+            --print(k..":"..v)
+            pstr=pstr.." "..k..":"..v
+        end
+    end
+end
+
+--local uzi=json_parse('{"id":55,"frames":[1.6,2,3,{"hi":"world"}]}')
+--print("----results---")
+--table_print(uzi)
