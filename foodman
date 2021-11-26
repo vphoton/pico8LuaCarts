@@ -1,0 +1,293 @@
+-- foodman
+-- by voxeledphoton
+--[[
+ggj 2019
+what is home to you?
+where i can eat
+]]
+
+
+function distance(x1, y1, x2, y2)
+ return sqrt((x2 - x1)^2 + (y2 - y1)^2)
+end
+function direction(x1, y1, x2, y2)
+ return (-atan2(y2-y1,x2-x1)-.25)%1
+end
+function ldirx(l,d)
+ return cos(d)*l
+end
+function ldiry(l,d)
+ return sin(d)*l
+end
+function round(num)
+ local nhalf=flr(num)+.5
+ if num<nhalf then
+  return flr(num) else 
+  return flr(num)+1
+ end
+end
+
+function cint(c1x,c1y,c2x,c2y,r1,r2,i12,nir,olapr)
+ inter={}
+ local pdist=distance(c1x,c1y,c2x,c2y)
+ local pdir=direction(c1x,c1y,c2x,c2y)
+ --overlap return
+ if (c1x==c2x and c1y==c2y) and r1==r2 then
+  if olapr==0 then
+   return c1x+ldirx(pdist,pdir),c1y+ldiry(pdist,pdir),pdir
+  end
+ end
+ --no intersection
+ if pdist>r1+r2 then
+  if nir==0 then
+   return c1x+ldirx(pdist/2,pdir),c1y+ldiry(pdist/2,pdir),pdir
+  end
+ end
+ --circle intersection calculations
+ local a=((r1*r1)-(r2*r2)+(pdist*pdist))/(pdist*2)
+ if (r1*r1)-(a*a)>0 then
+  h=sqrt((r1*r1)-(a*a)) else
+  h=0
+ end
+ local p2x=c1x+a*(c2x-c1x)/pdist
+ local p2y=c1y+a*(c2y-c1y)/pdist
+ local p3x=p2x+h*(c2y-c1y)/pdist
+ local p3y=p2y-h*(c2x-c1x)/pdist
+ local p4x=p2x-h*(c2y-c1y)/pdist
+ local p4y=p2y+h*(c2x-c1x)/pdist
+ if i12==-1 then
+  return p3x,p3y,pdir
+ end
+ if i12==1 then
+  return p4x,p4y,pdir
+ end
+end
+function thicc(x1,y1,x2,y2,r,c)
+ local tdist=distance(x1,y1,x2,y2)
+ local tdir=direction(x1,y1,x2,y2)
+ for i=0,tdist do
+  circfill(
+   x1+ldirx(i,tdir),
+   y1+ldiry(i,tdir),r,c
+  )
+ end
+end
+function thicc2(x1,y1,x2,y2,r,c)
+ local tdist=distance(x1,y1,x2,y2)
+ local tdir=direction(x1,y1,x2,y2)
+ for i=0,tdist do
+  circfill(
+   x1+ldirx(i/2,tdir),
+   y1+ldiry(i/2,tdir),r,c
+  )
+ end
+end
+
+function _init()
+ cls()
+ music(0)
+ poke(0x5f2d, 1)
+ mx,my=stat(32),stat(33)
+ xx,yy=48,96
+ ntdir=.25
+ tx,ty=xx,yy
+ hasfood=false
+ fparts={}
+ for i=1,50 do
+  add(fparts,
+   {x=tx,y=ty,
+   velx=0,vely=0,
+   r=0,col=3,alive=false}
+  )
+ end
+ --instantiate foods
+ foods={}
+ for i=1,5 do
+  add(foods,
+   {x=96+rnd(32),y=96+rnd(32),
+   velx=0,vely=0,
+   r=3,col=8+rnd(3),
+   mass=0.5,alive=true,
+   grab=false
+   }
+  )
+ end
+ lmx,lmy,spdmx,spdmy=0,0,0,0
+end
+
+function _update()
+ mx,my=stat(32),stat(33)
+ spdmx,spdmy=mx-lmx,my-lmy
+ xx=32
+ yy=130+sin(t())*4
+ 
+ pdir=direction(tx,ty,mx,my)
+ pdist=distance(tx,ty,mx,my)
+ adir=-4/(tx-mx)
+ if adir>.25 or adir<-.25 then adir=0 end
+ 
+ ntdir+=(.25+adir-ntdir)*.08
+ tx=xx+ldirx(32,ntdir)
+ ty=yy+ldiry(32,ntdir)
+ --food particles
+ hasfood=false
+ updatefoods()
+ if stat(34)==1 and hasfood and distance(tx+4,ty-8,mx,my)<4 then
+  if sin(t()*4)>.5 then sfx(1) end
+  explode(tx+4,ty-8,2,50)
+ end
+ updatefparts()
+ lmx,lmy=mx,my
+end
+
+function _draw()
+ cls(1)
+ print("home to me is food",8,8+cos(t())*2,8)
+ --ntdir+=sgn(mx-tx)*.1
+ --armleft
+ hx,hy=tx+32+cos(t()*.1)*8,64+sin(t()*.3)*8
+ e2x,e2y,e2d=cint(tx,ty,hx,hy,32,32,1,0,0)
+ circfill(hx,hy,4,2)
+ thicc(tx,ty,e2x,e2y,1,2)
+ thicc(e2x,e2y,hx,hy,1,2)
+ circfill(mx,my,3,2)
+ --knife
+ line(hx,hy,hx+ldirx(24,e2d+.25),hy+ldiry(24,e2d+.25),2)
+ line(
+  hx+ldirx(8,e2d+.25)+
+  ldirx(.8,e2d),
+  hy+ldiry(8,e2d+.25)+
+  ldiry(.8,e2d),
+  hx+ldirx(24,e2d+.25),
+  hy+ldiry(24,e2d+.25),2
+ )
+ --body
+ --line(xx,yy,tx,ty,8)
+ thicc(xx,yy,tx,ty,4,8)
+ --neck
+ thicc(tx,ty,tx,ty-16,1,15)
+ --head
+ circfill(tx,ty-16,8,15)
+ circfill(tx,ty-16,2,7)
+ circfill(tx+8,ty-16,2,7)
+ circfill(tx,ty-16,1,1)
+ circfill(tx+9,ty-16,1,1)
+ 
+ --mouth
+ mr=2+cos(t()*3)*2
+ circfill(tx+4,ty-10,mr+1,15)
+ circfill(tx+4,ty-10,mr,1)
+ 
+ 
+ --armright
+ ex,ey,ed=cint(tx,ty,mx,my,32,32,1,0,0)
+ circfill(mx,my,4,14)
+ thicc(tx,ty+1,ex,ey+1,1,14)
+ thicc(ex,ey+1,mx,my+1,1,14)
+ thicc(tx,ty,ex,ey,1,15)
+ thicc(ex,ey,mx,my,1,15)
+ thicc2(tx,ty,ex,ey,2,8)
+ circfill(mx,my,3,15)
+
+    drawfparts()
+    drawfoods()
+end
+
+-- particles
+function explode(x,y,r,particles)
+ local selected = 0
+ for i=1,#fparts do
+  if not fparts[i].alive then
+   fparts[i].x = x
+   fparts[i].y = y
+   fparts[i].vely = -1+rnd(2)
+   fparts[i].velx = -1+rnd(2)
+   fparts[i].mass = 0.5+rnd(2)
+   fparts[i].r = 0.5+rnd(r)
+   fparts[i].alive = true
+   selected+=1
+   if selected == particles then
+   break end
+  end
+ end
+end
+function updatefparts()
+ for i=1,#fparts do
+  if fparts[i].alive then
+   fparts[i].x+=fparts[i].velx/fparts[i].mass
+   fparts[i].y+=fparts[i].vely/fparts[i].mass
+   fparts[i].r-=0.1
+   if fparts[i].r<0.1 then
+    fparts[i].alive = false
+   end
+  end
+ end
+end
+function drawfparts()
+ for i=1,#fparts do
+  if fparts[i].alive then
+   circfill(
+    fparts[i].x,fparts[i].y,
+    fparts[i].r,fparts[i].col
+   )
+  end
+ end
+end
+-- foods
+
+function updatefoods()
+ for i=1,#foods do
+  if foods[i].alive then
+   if stat(34)==1 and distance(mx,my,foods[i].x,foods[i].y)<4 then
+    if hasfood==false then
+    foods[i].grab=true
+    foods[i].velx=spdmx
+    foods[i].vely=spdmy
+    if distance(mx,my,tx+4,ty-8)<4 then
+     foods[i].r-=0.1
+    end
+    end
+    hasfood=true
+   end
+   if stat(34)==0 then
+    foods[i].grab=false
+   end
+   if foods[i].grab==true then
+    foods[i].x=mx
+    foods[i].y=my
+    else
+    foods[i].vely+=(8-foods[i].vely)*.01
+    foods[i].x+=foods[i].velx/foods[i].mass
+    foods[i].y+=foods[i].vely/foods[i].mass
+    if foods[i].y>120 then
+     foods[i].y=120 
+     foods[i].vely=0 
+    end
+    if foods[i].x>120 then
+     foods[i].x=120 
+     foods[i].velx=0 
+    end
+    if foods[i].x<8 then
+     foods[i].x=8 
+     foods[i].velx=0 
+    end
+   end
+   --foods[i].r-=0.1
+   if foods[i].r<0.1 then
+    foods[i].alive = false
+    sfx(2)
+   end
+  end
+ end
+end
+
+function drawfoods()
+ for i=1,#foods do
+  if foods[i].alive then
+   circfill(
+    foods[i].x,foods[i].y,
+    foods[i].r,foods[i].col
+   )
+  end
+ end
+end
