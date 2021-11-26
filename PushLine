@@ -1,0 +1,27 @@
+--pushline
+--voxeledphoton (attempt at #tweetcart)
+poke(0x5f2d,1)function e(a,b,c,d)
+return sqrt((c-a)^2+(d-b)^2)
+end
+q,r,m,n,s,t,zz,k=64,64,0,0,0,0,0,.2
+::_::cls()
+o,p=m,n
+m,n=stat(32),stat(33)
+v,w=cos(k)*16,sin(k)*16
+f,g,h,i=q+v,r+w,q-v,r-w
+x=e(f,g,m,n)
+y=e(h,i,m,n)
+z=e(f,g,h,i)
+if(x+y<z+1)then
+s,t=(m-o),(n-p)
+zz=atan2(m-q,n-r)-atan2(o-q,p-r)--e(m,n,q,r)*e(m,n,o,p)/128
+end
+s+=(0-s)*.2
+t+=(0-t)*.2
+zz+=(0-zz)*.2
+k+=zz
+q+=s
+r+=t
+line(f,g,h,i)
+line(m,n,o,p)
+flip()goto _
